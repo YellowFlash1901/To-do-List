@@ -3,3 +3,4 @@ uvicorn[standard]
 SQLAlchemy
 pydantic
 psycopg2
+pydantic-settings
