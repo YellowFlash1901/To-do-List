@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { FileText, Plus, Trash2, NotebookPen } from "lucide-react";
+import { FileText, Plus, Trash2, NotebookPen, PanelLeft } from "lucide-react";
 import { Button } from "./components/ui/button";
 import { cn } from "./lib/utils";
 import { getPages, createPage, updatePage, deletePage } from "./api/pages";
@@ -13,6 +13,7 @@ export default function App() {
   const [isNew, setIsNew] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
+  const [sidebarOpen, setSidebarOpen] = useState(true);
 
   useEffect(() => {
     loadPages();
@@ -93,35 +94,58 @@ export default function App() {
 
   return (
     <div className="flex h-screen bg-background text-foreground font-sans antialiased">
+
       {/* Sidebar */}
-      <aside className="w-56 bg-zinc-900 flex flex-col shrink-0">
-        <div className="flex items-center gap-2 px-4 py-4 border-b border-zinc-800">
-          <NotebookPen size={16} className="text-zinc-400" />
-          <span className="text-sm font-semibold text-zinc-100">Notion Lite</span>
+      <aside className={cn(
+        "bg-zinc-900 flex flex-col shrink-0 transition-all duration-300 ease-in-out overflow-hidden",
+        sidebarOpen ? "w-64" : "w-12"
+      )}>
+        {/* Header row: toggle + logo */}
+        <div className="flex items-center h-12 border-b border-zinc-800 px-2 gap-2">
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={() => setSidebarOpen((prev) => !prev)}
+            className="shrink-0 h-8 w-8 text-zinc-400 hover:text-zinc-100 hover:bg-zinc-800"
+          >
+            <PanelLeft size={16} />
+          </Button>
+          {sidebarOpen && (
+            <div className="flex items-center gap-2 min-w-0">
+              <NotebookPen size={15} className="text-zinc-400 shrink-0" />
+              <span className="text-sm font-semibold text-zinc-100 truncate">Notion Lite</span>
+            </div>
+          )}
         </div>
 
-        <div className="px-2 py-3">
+        {/* New page */}
+        <div className={cn("py-3", sidebarOpen ? "px-2" : "px-1.5")}>
           <Button
             variant="ghost"
             size="sm"
             onClick={openNewForm}
-            className="w-full justify-start gap-2 text-zinc-400 hover:text-zinc-100 hover:bg-zinc-800"
+            className={cn(
+              "w-full gap-2 text-zinc-400 hover:text-zinc-100 hover:bg-zinc-800",
+              sidebarOpen ? "justify-start" : "justify-center px-0"
+            )}
           >
-            <Plus size={15} />
-            New page
+            <Plus size={15} className="shrink-0" />
+            {sidebarOpen && "New page"}
           </Button>
         </div>
 
+        {/* Page list */}
         <nav className="flex-1 overflow-y-auto px-2 space-y-0.5">
-          {pages.length === 0 && (
+          {sidebarOpen && pages.length === 0 && (
             <p className="px-3 py-2 text-xs text-zinc-600">No pages yet</p>
           )}
           {pages.map((page) => (
             <div
               key={page.id}
               onClick={() => openPage(page)}
+              title={!sidebarOpen ? (page.title || "Untitled") : undefined}
               className={cn(
-                "group flex items-center justify-between rounded-md px-3 py-1.5 cursor-pointer transition-colors",
+                "group flex items-center justify-between rounded-md px-2 py-1.5 cursor-pointer transition-colors",
                 selected?.id === page.id
                   ? "bg-zinc-700 text-zinc-100"
                   : "text-zinc-400 hover:bg-zinc-800 hover:text-zinc-200"
@@ -129,21 +153,23 @@ export default function App() {
             >
               <div className="flex items-center gap-2 min-w-0">
                 <FileText size={14} className="shrink-0" />
-                <span className="text-sm truncate">
-                  {page.title || "Untitled"}
-                </span>
+                {sidebarOpen && (
+                  <span className="text-sm truncate">{page.title || "Untitled"}</span>
+                )}
               </div>
-              <Button
-                variant="destructive"
-                size="icon"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  handleDelete(page.id);
-                }}
-                className="opacity-0 group-hover:opacity-100 shrink-0 h-6 w-6"
-              >
-                <Trash2 size={13} />
-              </Button>
+              {sidebarOpen && (
+                <Button
+                  variant="destructive"
+                  size="icon"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    handleDelete(page.id);
+                  }}
+                  className="opacity-0 group-hover:opacity-100 shrink-0 h-6 w-6"
+                >
+                  <Trash2 size={13} />
+                </Button>
+              )}
             </div>
           ))}
         </nav>
@@ -151,6 +177,7 @@ export default function App() {
 
       {/* Editor */}
       <main className="flex-1 flex flex-col overflow-hidden bg-white">
+
         {!selected && !isNew ? (
           <div className="flex-1 flex flex-col items-center justify-center gap-4 text-muted-foreground">
             <NotebookPen size={32} className="text-zinc-300" />
