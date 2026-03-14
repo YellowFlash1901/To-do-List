@@ -24,7 +24,7 @@ export async function createPage(title, content) {
 
 export async function updatePage(id, title, content) {
   const res = await fetch(`${BASE}/${id}`, {
-    method: "PUT",
+    method: "PATCH",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ title, content }),
   });

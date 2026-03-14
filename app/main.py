@@ -1,8 +1,11 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from app.routes.pages import page_router
+from app.routes.blocks import block_router
 from app.database import engine
-from app.models.page import Base
+from app.models.page import Page                                                                                                                                             
+from app.models.block import Block
+from app.models.base import Base
 
 app = FastAPI(title="Notion Lite")
 
@@ -16,4 +19,4 @@ app.add_middleware(
 Base.metadata.create_all(bind=engine)
 
 app.include_router(page_router)
-
+app.include_router(block_router)

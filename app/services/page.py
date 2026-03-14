@@ -46,7 +46,7 @@ class PageService:
         db.delete(page)
         db.commit()
         return {"id": page_id, "message": "Page deleted successfully"}
-        
+
 
 
 PageService = PageService()

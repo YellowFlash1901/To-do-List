@@ -38,7 +38,7 @@ def get_page(page_id: str, db: Session = Depends(get_db)):
     }
 
 # UPDATE endpoint
-@page_router.put("/{page_id}", response_model=SuccessResponse[PageResponse])
+@page_router.patch("/{page_id}", response_model=SuccessResponse[PageResponse])
 def update_page(page_id: str, page_data: UpdatePage, db: Session = Depends(get_db)):
     result = PageService.update_page(page_id, page_data, db)
     return {
