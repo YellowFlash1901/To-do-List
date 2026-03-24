@@ -1,24 +1,30 @@
 import { useEffect, useState } from "react";
-import { FileText, Plus, Trash2, NotebookPen, PanelLeft } from "lucide-react";
+import { FileText, Plus, Trash2, NotebookPen, PanelLeft, Folder, ChevronDown, ChevronRight } from "lucide-react";
 import { Button } from "./components/ui/button";
 import { cn } from "./lib/utils";
 import { getPages, getPage, createPage, updatePage, deletePage } from "./api/pages";
+import { getFolders, createFolder, deleteFolder } from "./api/folders";
 import { getBlocksByPage } from "./api/blocks";
 import BlockEditor from "./components/BlockEditor";
 
 export default function App() {
   const [pages, setPages] = useState([]);
-  const [selected, setSelected] = useState(null); // full page object
+  const [folders, setFolders] = useState([]);
+  const [expandedFolders, setExpandedFolders] = useState({});
+  const [selected, setSelected] = useState(null);
   const [blocks, setBlocks] = useState([]);
   const [newTitle, setNewTitle] = useState("");
   const [newContent, setNewContent] = useState("");
+  const [newFolderId, setNewFolderId] = useState(null);
   const [isNew, setIsNew] = useState(false);
   const [pageLoading, setPageLoading] = useState(false);
   const [error, setError] = useState(null);
   const [sidebarOpen, setSidebarOpen] = useState(true);
 
   useEffect(() => {
-    getPages().then(setPages).catch(() => setError("Failed to load pages."));
+    Promise.all([getPages(), getFolders()])
+      .then(([p, f]) => { setPages(p); setFolders(f); })
+      .catch(() => setError("Failed to load data."));
   }, []);
 
   async function openPage(pageId) {
@@ -39,11 +45,12 @@ export default function App() {
     }
   }
 
-  function openNewForm() {
+  function openNewForm(folderId = null) {
     setSelected(null);
     setBlocks([]);
     setNewTitle("");
     setNewContent("");
+    setNewFolderId(folderId);
     setIsNew(true);
     setError(null);
   }
@@ -55,7 +62,7 @@ export default function App() {
     }
     setError(null);
     try {
-      const created = await createPage(newTitle, newContent);
+      const created = await createPage(newTitle, newContent, newFolderId);
       setPages((prev) => [created, ...prev]);
       setSelected(created);
       setBlocks([]);
@@ -65,20 +72,36 @@ export default function App() {
     }
   }
 
+  async function handleAddFolder() {
+    const name = prompt("Folder name:");
+    if (!name?.trim()) return;
+    try {
+      const folder = await createFolder(name.trim());
+      setFolders((prev) => [...prev, folder]);
+    } catch {
+      setError("Failed to create folder.");
+    }
+  }
+
+  async function handleDeleteFolder(folderId) {
+    try {
+      await deleteFolder(folderId);
+      setFolders((prev) => prev.filter((f) => f.id !== folderId));
+      setPages((prev) => prev.map((p) => p.folder_id === folderId ? { ...p, folder_id: null } : p));
+    } catch {
+      setError("Failed to delete folder.");
+    }
+  }
+
   async function handleTitleBlur() {
     if (!selected || isNew) return;
-    if (selected.title === selected._savedTitle) return;
     try {
       const updated = await updatePage(selected.id, selected.title, selected.content ?? "");
       setPages((prev) => prev.map((p) => (p.id === updated.id ? updated : p)));
       setSelected(updated);
     } catch {
-      setError("Failed to save title.");
+      setError("Failed to save.");
     }
-  }
-
-  async function handleTitleChange(value) {
-    setSelected((prev) => ({ ...prev, title: value }));
   }
 
   async function handleDelete(pageId) {
@@ -94,6 +117,12 @@ export default function App() {
       setError("Delete failed.");
     }
   }
+
+  function toggleFolder(folderId) {
+    setExpandedFolders((prev) => ({ ...prev, [folderId]: !prev[folderId] }));
+  }
+
+  const unassignedPages = pages.filter((p) => !p.folder_id);
 
   return (
     <div className="flex h-screen bg-background text-foreground font-sans antialiased">
@@ -120,26 +149,95 @@ export default function App() {
           )}
         </div>
 
-        <div className={cn("py-3", sidebarOpen ? "px-2" : "px-1.5")}>
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={openNewForm}
-            className={cn(
-              "w-full gap-2 text-zinc-400 hover:text-zinc-100 hover:bg-zinc-800",
-              sidebarOpen ? "justify-start" : "justify-center px-0"
-            )}
-          >
-            <Plus size={15} className="shrink-0" />
-            {sidebarOpen && "New page"}
-          </Button>
-        </div>
+        {sidebarOpen && (
+          <div className="flex gap-1 py-3 px-2">
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => openNewForm()}
+              className="flex-1 justify-start gap-2 text-zinc-400 hover:text-zinc-100 hover:bg-zinc-800"
+            >
+              <Plus size={15} /> New page
+            </Button>
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={handleAddFolder}
+              className="justify-start gap-2 text-zinc-400 hover:text-zinc-100 hover:bg-zinc-800 px-2"
+              title="New folder"
+            >
+              <Folder size={15} />
+            </Button>
+          </div>
+        )}
 
-        <nav className="flex-1 overflow-y-auto px-2 space-y-0.5">
-          {sidebarOpen && pages.length === 0 && (
-            <p className="px-3 py-2 text-xs text-zinc-600">No pages yet</p>
+        <nav className="flex-1 overflow-y-auto px-2 space-y-1">
+          {/* Folders */}
+          {sidebarOpen && folders.map((folder) => {
+            const folderPages = pages.filter((p) => p.folder_id === folder.id);
+            const isExpanded = expandedFolders[folder.id];
+            return (
+              <div key={folder.id}>
+                <div
+                  className="group flex items-center justify-between rounded-md px-2 py-1.5 cursor-pointer text-zinc-400 hover:bg-zinc-800 hover:text-zinc-200"
+                  onClick={() => toggleFolder(folder.id)}
+                >
+                  <div className="flex items-center gap-2 min-w-0">
+                    {isExpanded ? <ChevronDown size={13} /> : <ChevronRight size={13} />}
+                    <Folder size={13} className="shrink-0" />
+                    <span className="text-sm truncate">{folder.name}</span>
+                  </div>
+                  <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100">
+                    <button
+                      onClick={(e) => { e.stopPropagation(); openNewForm(folder.id); }}
+                      className="text-zinc-400 hover:text-zinc-100 p-0.5"
+                      title="Add page to folder"
+                    >
+                      <Plus size={12} />
+                    </button>
+                    <button
+                      onClick={(e) => { e.stopPropagation(); handleDeleteFolder(folder.id); }}
+                      className="text-zinc-400 hover:text-red-400 p-0.5"
+                    >
+                      <Trash2 size={12} />
+                    </button>
+                  </div>
+                </div>
+
+                {isExpanded && folderPages.map((page) => (
+                  <div
+                    key={page.id}
+                    onClick={() => openPage(page.id)}
+                    className={cn(
+                      "group flex items-center justify-between rounded-md pl-8 pr-2 py-1.5 cursor-pointer transition-colors",
+                      selected?.id === page.id
+                        ? "bg-zinc-700 text-zinc-100"
+                        : "text-zinc-400 hover:bg-zinc-800 hover:text-zinc-200"
+                    )}
+                  >
+                    <div className="flex items-center gap-2 min-w-0">
+                      <FileText size={13} className="shrink-0" />
+                      <span className="text-sm truncate">{page.title || "Untitled"}</span>
+                    </div>
+                    <Button
+                      variant="destructive"
+                      size="icon"
+                      onClick={(e) => { e.stopPropagation(); handleDelete(page.id); }}
+                      className="opacity-0 group-hover:opacity-100 shrink-0 h-5 w-5"
+                    >
+                      <Trash2 size={11} />
+                    </Button>
+                  </div>
+                ))}
+              </div>
+            );
+          })}
+
+          {/* Unassigned pages */}
+          {sidebarOpen && unassignedPages.length > 0 && folders.length > 0 && (
+            <p className="px-2 pt-2 text-xs text-zinc-600">Pages</p>
           )}
-          {pages.map((page) => (
+          {unassignedPages.map((page) => (
             <div
               key={page.id}
               onClick={() => openPage(page.id)}
@@ -169,6 +267,10 @@ export default function App() {
               )}
             </div>
           ))}
+
+          {sidebarOpen && pages.length === 0 && folders.length === 0 && (
+            <p className="px-3 py-2 text-xs text-zinc-600">No pages yet</p>
+          )}
         </nav>
       </aside>
 
@@ -178,7 +280,7 @@ export default function App() {
           <div className="flex-1 flex flex-col items-center justify-center gap-4 text-muted-foreground">
             <NotebookPen size={32} className="text-zinc-300" />
             <p className="text-sm">Select a page or create a new one</p>
-            <Button variant="default" size="sm" onClick={openNewForm} className="gap-2">
+            <Button variant="default" size="sm" onClick={() => openNewForm()} className="gap-2">
               <Plus size={15} /> New page
             </Button>
           </div>
@@ -197,6 +299,11 @@ export default function App() {
 
               {isNew ? (
                 <>
+                  {newFolderId && (
+                    <p className="text-xs text-zinc-400 mb-4">
+                      In folder: <span className="text-zinc-300">{folders.find(f => f.id === newFolderId)?.name}</span>
+                    </p>
+                  )}
                   <input
                     className="text-4xl font-bold text-foreground bg-transparent border-none outline-none placeholder:text-zinc-300 mb-4 w-full"
                     placeholder="Untitled"
@@ -214,11 +321,16 @@ export default function App() {
                 </>
               ) : (
                 <>
+                  {selected.folder_id && (
+                    <p className="text-xs text-zinc-400 mb-4">
+                      In folder: <span className="text-zinc-300">{folders.find(f => f.id === selected.folder_id)?.name}</span>
+                    </p>
+                  )}
                   <input
                     className="text-4xl font-bold text-foreground bg-transparent border-none outline-none placeholder:text-zinc-300 mb-4 w-full"
                     placeholder="Untitled"
                     value={selected.title ?? ""}
-                    onChange={(e) => handleTitleChange(e.target.value)}
+                    onChange={(e) => setSelected((prev) => ({ ...prev, title: e.target.value }))}
                     onBlur={handleTitleBlur}
                   />
                   <textarea

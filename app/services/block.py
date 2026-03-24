@@ -16,20 +16,16 @@ class BlockService:
             raise HTTPException(status_code=500, detail="Failed to create page")        
         
     def get_block_by_id(self, block_id:str, db: Session):
-        block = db.query(Block).filter(Block.block_id == block_id).first()
+        block = db.query(Block).filter(Block.id == block_id).first()
         if not block:
             raise HTTPException(status_code=404, detail="Block not found")
         return block
 
-    def get_blocks_by_page_id(self, page_id: str,db: Session):
-        blocks = db.query(Block).filter(Block.page_id == page_id).all()
-        if not blocks:
-            raise HTTPException(status_code=404, detail="Block not found")
-
-        return blocks
+    def get_blocks_by_page_id(self, page_id: str, db: Session):
+        return db.query(Block).filter(Block.page_id == page_id).all()
 
     def update_block(self, block_id:str ,block_data: UpdateBlock, db:Session):
-        block = db.query(Block).filter(Block.block_id == block_id).first()
+        block = db.query(Block).filter(Block.id == block_id).first()
         if not block:
             raise HTTPException(status_code=404, detail="Block not found")
         if block_data.type is not None:
@@ -44,7 +40,7 @@ class BlockService:
         return block
     
     def delete_block(self, block_id:str , db:Session):
-        block = db.query(Block).filter(Block.block_id == block_id).first()
+        block = db.query(Block).filter(Block.id == block_id).first()
         if not block:
             raise HTTPException(status_code=404, detail="Block not found")
         db.delete(block)
