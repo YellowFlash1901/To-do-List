@@ -21,7 +21,7 @@ class UpdateBlock(BaseModel):
 
 class BlockResponse(BaseModel):
     page_id: str
-    block_id :str
+    id :str
     type: str
     content: Optional[str] = None
     position: int 

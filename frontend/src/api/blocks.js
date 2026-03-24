@@ -3,7 +3,7 @@ const BASE = "/api/blocks";
 export async function getBlocksByPage(pageId) {
   const res = await fetch(`${BASE}/page/${pageId}`);
   const json = await res.json();
-  return json.data;
+  return json.data ?? [];
 }
 
 export async function createBlock(pageId, type, content, position) {

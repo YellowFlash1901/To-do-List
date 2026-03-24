@@ -7,9 +7,8 @@ class Pagebase(BaseModel):
     title: Optional[str] = None
     content: Optional[str] = None
 
-
 class CreatePage(Pagebase):
-    pass
+    folder_id: Optional[str] = None
 
 
 class UpdatePage(Pagebase):
@@ -19,6 +18,7 @@ class PageResponse(BaseModel):
     id: str
     title: Optional[str] = None
     content: Optional[str] = None
+    folder_id: Optional[str] = None
 
 class SuccessResponse(BaseModel, Generic[T]):
     success: bool

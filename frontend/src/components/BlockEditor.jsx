@@ -17,7 +17,7 @@ import { createBlock, updateBlock, deleteBlock } from "../api/blocks";
 
 function SortableBlock({ block, onChange, onDelete }) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } =
-    useSortable({ id: block.block_id });
+    useSortable({ id: block.id });
 
   const style = {
     transform: CSS.Transform.toString(transform),
@@ -40,7 +40,7 @@ function SortableBlock({ block, onChange, onDelete }) {
           className="flex-1 text-2xl font-bold text-foreground bg-transparent border-none outline-none placeholder:text-zinc-300"
           placeholder="Heading"
           value={block.content ?? ""}
-          onChange={(e) => onChange(block.block_id, { content: e.target.value })}
+          onChange={(e) => onChange(block.id, { content: e.target.value })}
         />
       ) : (
         <textarea
@@ -48,12 +48,12 @@ function SortableBlock({ block, onChange, onDelete }) {
           placeholder="Type something..."
           rows={2}
           value={block.content ?? ""}
-          onChange={(e) => onChange(block.block_id, { content: e.target.value })}
+          onChange={(e) => onChange(block.id, { content: e.target.value })}
         />
       )}
 
       <button
-        onClick={() => onDelete(block.block_id)}
+        onClick={() => onDelete(block.id)}
         className="mt-2 text-zinc-300 hover:text-red-400 opacity-0 group-hover:opacity-100 shrink-0"
       >
         <Trash2 size={14} />
@@ -69,26 +69,26 @@ export default function BlockEditor({ pageId, blocks, setBlocks }) {
     const { active, over } = event;
     if (!over || active.id === over.id) return;
 
-    const oldIndex = blocks.findIndex((b) => b.block_id === active.id);
-    const newIndex = blocks.findIndex((b) => b.block_id === over.id);
+    const oldIndex = blocks.findIndex((b) => b.id === active.id);
+    const newIndex = blocks.findIndex((b) => b.id === over.id);
     const reordered = arrayMove(blocks, oldIndex, newIndex);
 
     setBlocks(reordered);
     await Promise.all(
-      reordered.map((block, index) => updateBlock(block.block_id, { position: index }))
+      reordered.map((block, index) => updateBlock(block.id, { position: index }))
     );
   }
 
   async function handleChange(blockId, fields) {
     setBlocks((prev) =>
-      prev.map((b) => (b.block_id === blockId ? { ...b, ...fields } : b))
+      prev.map((b) => (b.id === blockId ? { ...b, ...fields } : b))
     );
     await updateBlock(blockId, fields);
   }
 
   async function handleDelete(blockId) {
     await deleteBlock(blockId);
-    setBlocks((prev) => prev.filter((b) => b.block_id !== blockId));
+    setBlocks((prev) => prev.filter((b) => b.id !== blockId));
   }
 
   async function addBlock(type) {
@@ -101,12 +101,12 @@ export default function BlockEditor({ pageId, blocks, setBlocks }) {
     <div className="flex flex-col gap-2">
       <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
         <SortableContext
-          items={blocks.map((b) => b.block_id)}
+          items={blocks.map((b) => b.id)}
           strategy={verticalListSortingStrategy}
         >
           {blocks.map((block) => (
             <SortableBlock
-              key={block.block_id}
+              key={block.id}
               block={block}
               onChange={handleChange}
               onDelete={handleDelete}
